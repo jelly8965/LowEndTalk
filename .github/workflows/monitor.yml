@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   monitor:
-    runs-on: ubuntu-22.04 # 采用默认 Linux 环境，计费 1 倍率
+    runs-on: ubuntu-22.04 # 显式降级为 Ubuntu 22.04 以修复 libasound2 依赖报错
 
     steps:
       - name: Checkout repository
@@ -35,9 +35,19 @@ jobs:
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
           SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
-          LET_USERNAME: ${{ secrets.LET_USERNAME }} 
-          LET_PASSWORD: ${{ secrets.LET_PASSWORD }} 
+          LET_USERNAME: ${{ secrets.LET_USERNAME }}
+          LET_PASSWORD: ${{ secrets.LET_PASSWORD }}
         run: python monitor.py
+
+      - name: Upload Debug Screenshots
+        uses: actions/upload-artifact@v4
+        if: always() # 确保无论脚本是否中途报错，最后都会上传截图
+        with:
+          name: headless-screenshots
+          path: |
+            debug.png
+            debug_error.png
+          retention-days: 3
 
       - name: Commit and push state if changed
         run: |
