@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   monitor:
-    runs-on: ubuntu-latest # 采用默认 Linux 环境，计费 1 倍率
+    runs-on: ubuntu-22.04 # 采用默认 Linux 环境，计费 1 倍率
 
     steps:
       - name: Checkout repository
