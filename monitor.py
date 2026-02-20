@@ -34,6 +34,7 @@ def get_latest_discussion():
                 print("检测到游客访问限制，正在执行模拟登录...")
                 if not LET_USERNAME or not LET_PASSWORD:
                     print("未配置论坛登录凭据 (LET_USERNAME / LET_PASSWORD)，退出抓取。")
+                    page.screenshot(path="debug_error.png", full_page=True)
                     browser.close()
                     return None
 
@@ -42,19 +43,21 @@ def get_latest_discussion():
                 page.fill('input[name="Password"]', LET_PASSWORD)
                 
                 # 点击 "Sign In" 按钮
-                # 使用多重选择器以确保极高的命中率
                 page.click('input[type="submit"], input[value="Sign In"], #Form_SignIn')
                 
                 print("登录表单已提交，等待重定向回目标页面...")
-                # 等待页面跳回目标用户的 Profile 页面
                 page.wait_for_url("**/profile/discussions/DartNode**", timeout=30000)
                 page.wait_for_load_state("networkidle")
                 print("登录成功，已进入目标页面。")
 
+            # 无论是否经过登录，都在此时截取目标页面的快照以便排错
+            print("正在截取页面快照...")
+            page.screenshot(path="debug.png", full_page=True)
             html_content = page.content()
             
         except Exception as e:
             print(f"页面加载或登录失败: {e}")
+            page.screenshot(path="debug_error.png", full_page=True)
             browser.close()
             return None
             
