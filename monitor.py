@@ -1,8 +1,10 @@
 import os
+import time
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from playwright.sync_api import sync_playwright
+from playwright_stealth import stealth_sync
 from bs4 import BeautifulSoup
 
 TARGET_URL = "https://lowendtalk.com/profile/discussions/DartNode"
@@ -19,15 +21,35 @@ LET_PASSWORD = os.environ.get("LET_PASSWORD")
 
 def get_latest_discussion():
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        # 添加防检测启动参数
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                '--disable-blink-features=AutomationControlled',
+                '--disable-popup-blocking',
+                '--no-sandbox',
+                '--disable-setuid-sandbox'
+            ]
         )
+        
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            viewport={'width': 1920, 'height': 1080}
+        )
+        
         page = context.new_page()
+        
+        # 注入隐身脚本，抹除自动化特征
+        stealth_sync(page)
         
         try:
             print("正在访问目标页面...")
-            page.goto(TARGET_URL, wait_until="networkidle", timeout=30000)
+            page.goto(TARGET_URL, wait_until="networkidle", timeout=45000)
+            
+            # 如果遇到 Cloudflare 盾，给予一定的 JS 自动演算和验证时间
+            if "Performing security verification" in page.content() or "Just a moment" in page.title():
+                print("遇到 Cloudflare 质询盾，正在等待其自动解析...")
+                time.sleep(10)  # 等待10秒看是否能自动通过
             
             # 检测是否被重定向到 signin 页面
             if "signin" in page.url.lower():
@@ -46,7 +68,7 @@ def get_latest_discussion():
                 page.click('input[type="submit"], input[value="Sign In"], #Form_SignIn')
                 
                 print("登录表单已提交，等待重定向回目标页面...")
-                page.wait_for_url("**/profile/discussions/DartNode**", timeout=30000)
+                page.wait_for_url("**/profile/discussions/DartNode**", timeout=45000)
                 page.wait_for_load_state("networkidle")
                 print("登录成功，已进入目标页面。")
 
